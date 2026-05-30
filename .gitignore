@@ -1,0 +1,15 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+
+# Rendered config (built at container runtime)
+config.toml
+crontab
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/

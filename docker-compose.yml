@@ -1,0 +1,17 @@
+services:
+  umami-report-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pin the upstream Thunderbottom/umami-alerts commit. Bump deliberately.
+        UMAMI_ALERTS_REF: 8dc96e406d016bc1c6c68b828ac58f87492460ee
+    image: umami-report-cloud-runner:latest
+    container_name: umami-report-runner
+    # All configuration comes from environment variables (see .env.example).
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Background worker — no ports to expose.
+    # Logs (each scheduled run + report output) go to stdout/stderr:
+    #   docker compose logs -f

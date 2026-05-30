@@ -1,0 +1,5 @@
+# Shell scripts must keep LF line endings — they run inside the Linux container.
+*.sh text eol=lf
+docker/entrypoint.sh text eol=lf
+docker/render-config.sh text eol=lf
+Dockerfile text eol=lf
