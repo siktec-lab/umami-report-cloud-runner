@@ -298,6 +298,12 @@ or change `UMAMI_ALERTS_REF` under `build.args` in `docker-compose.yml` and rebu
 | Report appears empty | No traffic in the window | Use `REPORT_TYPE=weekly`, or confirm the window with `DEBUG=true`. |
 | Scheduled run fires at the wrong local time | `CRON_SCHEDULE` interpreted in the default timezone | Set `CRON_TZ` (or `TIMEZONE`) to your zone. |
 
+## Contributing
+
+The `main` branch is protected; all changes land through pull requests that pass CI. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the local checks to run before opening a
+PR, and the branch workflow.
+
 ## License
 
 MIT — see [LICENSE](LICENSE). This project builds and wraps

@@ -1,0 +1,41 @@
+name: Bug report
+description: Something is not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please redact secrets (API keys, passwords) from any logs or env you paste.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The command you ran and the relevant configuration (redact secrets).
+      placeholder: |
+        docker compose run --rm -e RUN_MODE=once umami-report-runner
+        REPORT_TYPE=daily, single site, ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Container output. Run with `DEBUG=true` for detail. Redact secrets.
+      render: shell
+  - type: input
+    id: image-ref
+    attributes:
+      label: Version / pinned upstream
+      description: Your image tag or commit, and the `UMAMI_ALERTS_REF` if changed from default.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Host OS, Docker version, deployment platform (Compose, Coolify, etc.).

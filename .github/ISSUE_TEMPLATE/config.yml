@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream umami-alerts
+    url: https://github.com/Thunderbottom/umami-alerts/issues
+    about: Issues with the report content, Umami querying, or email rendering belong upstream — this project only containerizes and configures it.
