@@ -1,5 +1,7 @@
 # umami-report-cloud-runner
 
+[![CI](https://github.com/siktec-lab/umami-report-cloud-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/siktec-lab/umami-report-cloud-runner/actions/workflows/ci.yml)
+
 A containerized, environment-driven deployment of
 [Thunderbottom/umami-alerts](https://github.com/Thunderbottom/umami-alerts) — a tool that generates
 daily or weekly [Umami Analytics](https://umami.is) reports and emails them.
