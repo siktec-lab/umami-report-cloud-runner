@@ -25,6 +25,13 @@ case "${RUN_MODE:-cron}" in
     cron)
         : "${CRON_SCHEDULE:?set CRON_SCHEDULE (e.g. '0 8 * * *') or use RUN_MODE=once}"
 
+        # supercronic interprets the crontab in the container's local time. Use
+        # CRON_TZ if given, otherwise fall back to TIMEZONE so the schedule and
+        # the report window share one timezone by default. tzdata is installed
+        # in the image, so named zones (e.g. Asia/Jerusalem) resolve.
+        TZ="${CRON_TZ:-${TIMEZONE:-UTC}}"
+        export TZ
+
         # Optionally fire one report immediately so a fresh deploy verifies its
         # config without waiting for the first scheduled tick.
         case "$(printf '%s' "${RUN_ON_START:-false}" | tr '[:upper:]' '[:lower:]')" in
