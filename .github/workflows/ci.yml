@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shellcheck:
+    name: Lint shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck
+        run: |
+          sudo apt-get update && sudo apt-get install -y shellcheck
+          shellcheck --shell=sh docker/entrypoint.sh docker/render-config.sh
+
+  render-config:
+    name: Render config from env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Single-site renders valid TOML
+        env:
+          CONFIG_PATH: /tmp/config.toml
+          RESEND_API_KEY: re_test_dummy
+          EMAIL_FROM: Umami Reports <reports@example.com>
+          UMAMI_BASE_URL: https://analytics.example.com
+          UMAMI_WEBSITE_ID: e97f683e-12e8-4fb5-970b-f5171804fe21
+          UMAMI_USERNAME: tester
+          UMAMI_PASSWORD: "p@ss\"word"
+          SITE_NAME: Example Site
+          REPORT_RECIPIENTS: a@example.com, b@example.com
+          REPORT_TYPE: daily
+        run: |
+          sh docker/render-config.sh
+          echo "--- rendered ---"
+          cat "$CONFIG_PATH"
+          # Validate it parses as TOML.
+          python3 - "$CONFIG_PATH" <<'PY'
+          import sys, tomllib
+          with open(sys.argv[1], "rb") as f:
+              cfg = tomllib.load(f)
+          assert cfg["app"]["report_type"] == "daily"
+          assert cfg["smtp"]["host"] == "smtp.resend.com"
+          assert cfg["smtp"]["password"] == "re_test_dummy"
+          site = cfg["websites"]["site"]
+          assert site["recipients"] == ["a@example.com", "b@example.com"], site["recipients"]
+          assert site["password"] == 'p@ss"word', site["password"]
+          print("single-site config OK")
+          PY
+
+      - name: Multi-site renders both blocks
+        env:
+          CONFIG_PATH: /tmp/multi.toml
+          RESEND_API_KEY: re_test_dummy
+          EMAIL_FROM: reports@example.com
+          SITE_1_BASE_URL: https://a.example.com
+          SITE_1_WEBSITE_ID: id-1
+          SITE_1_USERNAME: u1
+          SITE_1_PASSWORD: p1
+          SITE_1_RECIPIENTS: one@example.com
+          SITE_2_BASE_URL: https://b.example.com
+          SITE_2_WEBSITE_ID: id-2
+          SITE_2_USERNAME: u2
+          SITE_2_PASSWORD: p2
+          SITE_2_RECIPIENTS: x@example.com,y@example.com
+          SITE_2_TIMEZONE: Asia/Kolkata
+          REPORT_TYPE: weekly
+        run: |
+          sh docker/render-config.sh
+          python3 - "$CONFIG_PATH" <<'PY'
+          import sys, tomllib
+          with open(sys.argv[1], "rb") as f:
+              cfg = tomllib.load(f)
+          assert set(cfg["websites"]) == {"site1", "site2"}, cfg["websites"].keys()
+          assert cfg["websites"]["site2"]["timezone"] == "Asia/Kolkata"
+          assert cfg["app"]["report_type"] == "weekly"
+          print("multi-site config OK")
+          PY
+
+      - name: Missing required var fails fast
+        run: |
+          set +e
+          CONFIG_PATH=/tmp/fail.toml RESEND_API_KEY=re_x \
+            UMAMI_BASE_URL=https://x.example UMAMI_WEBSITE_ID=i \
+            UMAMI_USERNAME=u UMAMI_PASSWORD=p REPORT_RECIPIENTS=a@example.com \
+            sh docker/render-config.sh
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "expected non-zero exit when EMAIL_FROM is missing" >&2
+            exit 1
+          fi
+          echo "fail-fast OK (exit $status)"
+
+  docker-build:
+    name: Build image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: umami-report-cloud-runner:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test — binary runs and config renders
+        run: |
+          # Binary is present and responds to --help.
+          docker run --rm --entrypoint /app/umami-alerts umami-report-cloud-runner:ci --help
+          # Entrypoint renders config and fails fast without required vars.
+          set +e
+          docker run --rm umami-report-cloud-runner:ci 2>&1 | head -5
+          # Dry run with dummy creds: renders config and launches the binary
+          # (it will fail to reach the fake Umami host — that's expected; we only
+          # assert the pipeline got that far by checking the log output).
+          out=$(docker run --rm \
+            -e RUN_MODE=once -e DRY_RUN=true -e DEBUG=true \
+            -e RESEND_API_KEY=re_dummy -e EMAIL_FROM=reports@example.com \
+            -e UMAMI_BASE_URL=https://umami.invalid.example \
+            -e UMAMI_WEBSITE_ID=id -e UMAMI_USERNAME=u -e UMAMI_PASSWORD=p \
+            -e REPORT_RECIPIENTS=you@example.com \
+            umami-report-cloud-runner:ci 2>&1)
+          echo "$out"
+          echo "$out" | grep -q "render-config: wrote" || { echo "config was not rendered" >&2; exit 1; }
+          echo "$out" | grep -q "Starting umami-alerts" || { echo "binary did not start" >&2; exit 1; }
+          echo "smoke test OK"

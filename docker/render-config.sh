@@ -131,7 +131,9 @@ emit_site() {
 SITE_COUNT=0
 
 # Numbered multi-site path: SITE_1_*, SITE_2_*, … Present if SITE_1_BASE_URL set.
+# These are populated via eval below; declare them so the assignments are visible.
 n=1
+_bu=""; _id=""; _nm=""; _us=""; _pw=""; _rc=""; _tz=""
 while :; do
     eval "_bu=\${SITE_${n}_BASE_URL:-}"
     [ -n "${_bu}" ] || break
