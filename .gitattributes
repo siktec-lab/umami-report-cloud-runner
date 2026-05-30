@@ -3,3 +3,5 @@
 docker/entrypoint.sh text eol=lf
 docker/render-config.sh text eol=lf
 Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
